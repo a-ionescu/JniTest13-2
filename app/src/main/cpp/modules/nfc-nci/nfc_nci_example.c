@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 #include <errno.h>
-#include <malloc.h>
 #include <string.h>
 
-#include <log/log.h>
-
+#include <cutils/log.h>
 #include <hardware/hardware.h>
 #include <hardware/nfc.h>
+
 
 /*
  * NCI HAL method implementations. These must be overriden

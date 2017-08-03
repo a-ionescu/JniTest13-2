@@ -39,9 +39,9 @@ typedef enum {
 * Callback for pan connection state
 */
 typedef void (*btpan_connection_state_callback)(btpan_connection_state_t state, bt_status_t error,
-                                                const RawAddress *bd_addr, int local_role, int remote_role);
-typedef void (*btpan_control_state_callback)(btpan_control_state_t state, int local_role,
-                                            bt_status_t error, const char* ifname);
+                                                const bt_bdaddr_t *bd_addr, int local_role, int remote_role);
+typedef void (*btpan_control_state_callback)(btpan_control_state_t state, bt_status_t error,
+                                            int local_role, const char* ifname);
 
 typedef struct {
     size_t size;
@@ -69,11 +69,11 @@ typedef struct {
      * start bluetooth pan connection to the remote device by specified pan role. The result state will be
      * returned by btpan_connection_state_callback
      */
-    bt_status_t (*connect)(const RawAddress *bd_addr, int local_role, int remote_role);
+    bt_status_t (*connect)(const bt_bdaddr_t *bd_addr, int local_role, int remote_role);
     /**
      * stop bluetooth pan connection. The result state will be returned by btpan_connection_state_callback
      */
-    bt_status_t (*disconnect)(const RawAddress *bd_addr);
+    bt_status_t (*disconnect)(const bt_bdaddr_t *bd_addr);
 
     /**
      * Cleanup the pan interface

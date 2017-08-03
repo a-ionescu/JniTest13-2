@@ -1,10 +1,15 @@
+
 #include <pthread.h>
 #include <signal.h>
 #include <hardware/gps.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include "jni.h"
+
+
+#include <jni.h>
+#include <utils/misc.h>
+
 
 const GpsInterface* gGpsInterface = NULL;
 const AGpsInterface* gAGpsInterface = NULL;
@@ -187,6 +192,51 @@ void sigint_handler(int signum)
     }
 }
 
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_spirent_pttb_jnitest13_MainActivity_stringFromJNI(JNIEnv *env, jobject /* this */) {
+
+    return env->NewStringUTF("Hello from C++");
+
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_spirent_pttb_jnitest13_MainActivity_nativeDeleteAidingData(JNIEnv *env, jobject /* this */, jint flags) {
+
+    fprintf(stdout, "*** setup signal handler\n");
+    signal(SIGINT, sigint_handler);
+
+    fprintf(stdout, "*** get gps interface\n");
+    gGpsInterface = get_gps_interface();
+
+    fprintf(stdout, "*** init gps interface\n");
+    if (gGpsInterface && !gGpsInterface->init(&callbacks)) {
+        gAGpsInterface = get_agps_interface(gGpsInterface);
+        if (gAGpsInterface) {
+            gAGpsInterface->init(&callbacks2);
+            gAGpsInterface->set_server(AGPS_TYPE_SUPL, "supl.google.com", 7276);
+        }
+
+        gAGpsRilInterface = get_agps_ril_interface(gGpsInterface);
+        if (gAGpsRilInterface) {
+            gAGpsRilInterface->init(&callbacks3);
+        }
+
+        fprintf(stdout, "*** start gps track\n");
+        gGpsInterface->delete_aiding_data(GPS_DELETE_ALL);
+        gGpsInterface->start();
+        // timeval tv;
+        // gettimeofday(&tv, NULL);
+        // gGpsInterface->inject_time(tv.tv_sec, tv.tv_sec, 0);
+        //gGpsInterface->set_position_mode(GPS_POSITION_MODE_MS_BASED,GPS_POSITION_RECURRENCE_PERIODIC,1000, 0, 0);
+    }
+    quit:
+    sleep(1);
+
+
+}
+
+
 int main(int argc, char *argv[])
 {
     fprintf(stdout, "*** setup signal handler\n");
@@ -222,3 +272,5 @@ int main(int argc, char *argv[])
     sleep(10000000);
     return 0;
 }
+
+

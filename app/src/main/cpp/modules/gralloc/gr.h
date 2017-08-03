@@ -18,7 +18,11 @@
 #define GR_H_
 
 #include <stdint.h>
-#include <sys/user.h>
+#ifdef HAVE_ANDROID_OS      // just want PAGE_SIZE define
+# include <asm/page.h>
+#else
+# include <sys/user.h>
+#endif
 #include <limits.h>
 #include <sys/cdefs.h>
 #include <hardware/gralloc.h>
@@ -48,7 +52,7 @@ public:
     class Autolock {
         Locker& locker;
     public:
-        inline explicit Autolock(Locker& locker) : locker(locker) {  locker.lock(); }
+        inline Autolock(Locker& locker) : locker(locker) {  locker.lock(); }
         inline ~Autolock() { locker.unlock(); }
     };
     inline Locker()        { pthread_mutex_init(&mutex, 0); }

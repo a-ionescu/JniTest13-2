@@ -14,24 +14,25 @@
  * limitations under the License.
  */
 
-#include <errno.h>
-#include <fcntl.h>
 #include <limits.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
+
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
+#include <sys/ioctl.h>
 
 #include <cutils/ashmem.h>
+#include <cutils/log.h>
 #include <cutils/atomic.h>
-#include <log/log.h>
 
-#include <hardware/gralloc.h>
 #include <hardware/hardware.h>
+#include <hardware/gralloc.h>
 
 #include "gralloc_priv.h"
 #include "gr.h"
@@ -71,31 +72,31 @@ extern int gralloc_unregister_buffer(gralloc_module_t const* module,
 /*****************************************************************************/
 
 static struct hw_module_methods_t gralloc_module_methods = {
-        .open = gralloc_device_open
+        open: gralloc_device_open
 };
 
 struct private_module_t HAL_MODULE_INFO_SYM = {
-    .base = {
-        .common = {
-            .tag = HARDWARE_MODULE_TAG,
-            .version_major = 1,
-            .version_minor = 0,
-            .id = GRALLOC_HARDWARE_MODULE_ID,
-            .name = "Graphics Memory Allocator Module",
-            .author = "The Android Open Source Project",
-            .methods = &gralloc_module_methods
+    base: {
+        common: {
+            tag: HARDWARE_MODULE_TAG,
+            version_major: 1,
+            version_minor: 0,
+            id: GRALLOC_HARDWARE_MODULE_ID,
+            name: "Graphics Memory Allocator Module",
+            author: "The Android Open Source Project",
+            methods: &gralloc_module_methods
         },
-        .registerBuffer = gralloc_register_buffer,
-        .unregisterBuffer = gralloc_unregister_buffer,
-        .lock = gralloc_lock,
-        .unlock = gralloc_unlock,
+        registerBuffer: gralloc_register_buffer,
+        unregisterBuffer: gralloc_unregister_buffer,
+        lock: gralloc_lock,
+        unlock: gralloc_unlock,
     },
-    .framebuffer = 0,
-    .flags = 0,
-    .numBuffers = 0,
-    .bufferMask = 0,
-    .lock = PTHREAD_MUTEX_INITIALIZER,
-    .currentBuffer = 0,
+    framebuffer: 0,
+    flags: 0,
+    numBuffers: 0,
+    bufferMask: 0,
+    lock: PTHREAD_MUTEX_INITIALIZER,
+    currentBuffer: 0,
 };
 
 /*****************************************************************************/
@@ -165,7 +166,7 @@ static int gralloc_alloc_framebuffer(alloc_device_t* dev,
 }
 
 static int gralloc_alloc_buffer(alloc_device_t* dev,
-        size_t size, int /*usage*/, buffer_handle_t* pHandle)
+        size_t size, int usage, buffer_handle_t* pHandle)
 {
     int err = 0;
     int fd = -1;
@@ -195,41 +196,38 @@ static int gralloc_alloc_buffer(alloc_device_t* dev,
 
 /*****************************************************************************/
 
-inline size_t align(size_t value, size_t alignment)
-{
-    return ((value + alignment - 1) / alignment) * alignment;
-}
-
 static int gralloc_alloc(alloc_device_t* dev,
-        int width, int height, int format, int usage,
+        int w, int h, int format, int usage,
         buffer_handle_t* pHandle, int* pStride)
 {
     if (!pHandle || !pStride)
         return -EINVAL;
 
-    int bytesPerPixel = 0;
+    size_t size, stride;
+
+    int align = 4;
+    int bpp = 0;
     switch (format) {
         case HAL_PIXEL_FORMAT_RGBA_8888:
         case HAL_PIXEL_FORMAT_RGBX_8888:
         case HAL_PIXEL_FORMAT_BGRA_8888:
-            bytesPerPixel = 4;
+            bpp = 4;
             break;
         case HAL_PIXEL_FORMAT_RGB_888:
-            bytesPerPixel = 3;
+            bpp = 3;
             break;
         case HAL_PIXEL_FORMAT_RGB_565:
-        case HAL_PIXEL_FORMAT_RAW16:
-            bytesPerPixel = 2;
+        case HAL_PIXEL_FORMAT_RGBA_5551:
+        case HAL_PIXEL_FORMAT_RGBA_4444:
+        case HAL_PIXEL_FORMAT_RAW_SENSOR:
+            bpp = 2;
             break;
         default:
             return -EINVAL;
     }
-
-    const size_t tileWidth = 2;
-    const size_t tileHeight = 2;
-
-    size_t stride = align(width, tileWidth);
-    size_t size = align(height, tileHeight) * stride * bytesPerPixel + 4;
+    size_t bpr = (w*bpp + (align-1)) & ~(align-1);
+    size = bpr * h;
+    stride = bpr / bpp;
 
     int err;
     if (usage & GRALLOC_USAGE_HW_FB) {

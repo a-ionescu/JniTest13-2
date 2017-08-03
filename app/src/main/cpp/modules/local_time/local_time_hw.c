@@ -18,12 +18,11 @@
 //#define LOG_NDEBUG 0
 
 #include <errno.h>
-#include <malloc.h>
 #include <stdint.h>
-#include <string.h>
 #include <sys/time.h>
+#include <linux/time.h>
 
-#include <log/log.h>
+#include <cutils/log.h>
 
 #include <hardware/hardware.h>
 #include <hardware/local_time_hal.h>

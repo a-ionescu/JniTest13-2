@@ -17,78 +17,84 @@
 #ifndef NATIVE_HANDLE_H_
 #define NATIVE_HANDLE_H_
 
-#include <sys/cdefs.h>
+#include <stdalign.h>
 
-__BEGIN_DECLS
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-typedef struct
+/* Declare a char array for use with native_handle_init */
+#define NATIVE_HANDLE_DECLARE_STORAGE(name, maxFds, maxInts) \
+    alignas(native_handle_t) char name[                            \
+      sizeof(native_handle_t) + sizeof(int) * (maxFds + maxInts)]
+
+typedef struct native_handle
 {
-    int version;        /* sizeof(native_handle) */
+    int version;        /* sizeof(native_handle_t) */
     int numFds;         /* number of file-descriptors at &data[0] */
     int numInts;        /* number of ints at &data[numFds] */
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wzero-length-array"
+#endif
     int data[0];        /* numFds + numInts ints */
-} native_handle;
-
-
-/*
- * native_handle_dup
- * 
- * duplicates a native handle. All source file descriptors are dup()'ed.
- * 
- * lhs.numFds must be 0 or match rhs.numFds
- * lhs.numInts must be 0 or match rhs.numInts
- * 
- * if lhs.numFds and lhs.numInts are set to 0, they are the only fields
- * updated, this can be used to figure out the size needed for copying rhs.
- * 
- * return 0 on success, or a negative error code on failure
- * 
- */
-int native_handle_dup(native_handle* lhs, native_handle const* rhs);
-
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+} native_handle_t;
 
 /*
  * native_handle_close
  * 
- * closes the file descriptors contained in this native_handle
+ * closes the file descriptors contained in this native_handle_t
  * 
  * return 0 on success, or a negative error code on failure
  * 
  */
-int native_handle_close(const native_handle* h);
+int native_handle_close(const native_handle_t* h);
 
+/*
+ * native_handle_init
+ *
+ * Initializes a native_handle_t from storage.  storage must be declared with
+ * NATIVE_HANDLE_DECLARE_STORAGE.  numFds and numInts must not respectively
+ * exceed maxFds and maxInts used to declare the storage.
+ */
+native_handle_t* native_handle_init(char* storage, int numFds, int numInts);
 
 /*
  * native_handle_create
  * 
- * creates a native_handle and initializes it. must be destroyed with
+ * creates a native_handle_t and initializes it. must be destroyed with
  * native_handle_delete().
  * 
  */
-native_handle* native_handle_create(int numFds, int numInts);
+native_handle_t* native_handle_create(int numFds, int numInts);
+
+/*
+ * native_handle_clone
+ *
+ * creates a native_handle_t and initializes it from another native_handle_t.
+ * Must be destroyed with native_handle_delete().
+ *
+ */
+native_handle_t* native_handle_clone(const native_handle_t* handle);
 
 /*
  * native_handle_delete
  * 
- * frees a native_handle allocated with native_handle_create().
- * This ONLY frees the memory allocated for the native_handle, but doesn't
+ * frees a native_handle_t allocated with native_handle_create().
+ * This ONLY frees the memory allocated for the native_handle_t, but doesn't
  * close the file descriptors; which can be achieved with native_handle_close().
  * 
  * return 0 on success, or a negative error code on failure
  * 
  */
-int native_handle_delete(native_handle* h);
+int native_handle_delete(native_handle_t* h);
 
 
-/*
- * native_handle_copy
- * 
- * makes a deep copy of rhs. If rhs is null, returns null.
- * 
- */
-native_handle* native_handle_copy(const native_handle* rhs);
-
-
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NATIVE_HANDLE_H_ */

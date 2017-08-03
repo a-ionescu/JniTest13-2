@@ -21,11 +21,8 @@
 
 #include "utils/Log.h"
 #include "camera2_utils.h"
-#include <dlfcn.h>
 
 namespace android {
-namespace camera2 {
-namespace tests {
 
 /**
  * MetadataQueue
@@ -176,7 +173,7 @@ status_t MetadataQueue::setStreamSlot(const List<camera_metadata_t*> &bufs) {
 }
 
 status_t MetadataQueue::freeBuffers(List<camera_metadata_t*>::iterator start,
-                                    const List<camera_metadata_t*>::iterator& end) {
+                                    List<camera_metadata_t*>::iterator end) {
     while (start != end) {
         free_camera_metadata(*start);
         start = mStreamSlot.erase(start);
@@ -208,13 +205,14 @@ int MetadataQueue::consumer_dequeue(const camera2_request_queue_src_ops_t *q,
     return queue->dequeue(buffer, true);
 }
 
-int MetadataQueue::consumer_free(const camera2_request_queue_src_ops_t * /* q */,
+int MetadataQueue::consumer_free(const camera2_request_queue_src_ops_t *q,
         camera_metadata_t *old_buffer) {
+    MetadataQueue *queue = getInstance(q);
     free_camera_metadata(old_buffer);
     return OK;
 }
 
-int MetadataQueue::producer_dequeue(const camera2_frame_queue_dst_ops_t * /* q */,
+int MetadataQueue::producer_dequeue(const camera2_frame_queue_dst_ops_t *q,
         size_t entries, size_t bytes,
         camera_metadata_t **buffer) {
     camera_metadata_t *new_buffer =
@@ -224,7 +222,7 @@ int MetadataQueue::producer_dequeue(const camera2_frame_queue_dst_ops_t * /* q *
         return OK;
 }
 
-int MetadataQueue::producer_cancel(const camera2_frame_queue_dst_ops_t * /* q */,
+int MetadataQueue::producer_cancel(const camera2_frame_queue_dst_ops_t *q,
         camera_metadata_t *old_buffer) {
     free_camera_metadata(old_buffer);
     return OK;
@@ -316,12 +314,12 @@ void NotifierListener::notify_callback_dispatch(int32_t msg_type,
     (type *)((char*)(ptr) - offsetof(type, member))
 #endif
 
-StreamAdapter::StreamAdapter(sp<IGraphicBufferProducer> consumer):
+StreamAdapter::StreamAdapter(sp<ISurfaceTexture> consumer):
         mState(UNINITIALIZED), mDevice(NULL),
         mId(-1),
         mWidth(0), mHeight(0), mFormat(0)
 {
-    mConsumerInterface = new Surface(consumer);
+    mConsumerInterface = new SurfaceTextureClient(consumer);
     camera2_stream_ops::dequeue_buffer = dequeue_buffer;
     camera2_stream_ops::enqueue_buffer = enqueue_buffer;
     camera2_stream_ops::cancel_buffer = cancel_buffer;
@@ -386,21 +384,12 @@ status_t StreamAdapter::connectToDevice(camera2_device_t *d,
         return res;
     }
 
-    res = native_window_set_buffers_dimensions(mConsumerInterface.get(),
-            mWidth, mHeight);
+    res = native_window_set_buffers_geometry(mConsumerInterface.get(),
+            mWidth, mHeight, mFormat);
     if (res != OK) {
-        ALOGE("%s: Unable to configure buffer dimensions"
-                " %d x %d for stream %d",
-                __FUNCTION__, mWidth, mHeight, mId);
-        mState = CONNECTED;
-        return res;
-    }
-    res = native_window_set_buffers_format(mConsumerInterface.get(),
-            mFormat);
-    if (res != OK) {
-        ALOGE("%s: Unable to configure buffer format"
-                " 0x%x for stream %d",
-                __FUNCTION__, mFormat, mId);
+        ALOGE("%s: Unable to configure buffer geometry"
+                " %d x %d, format 0x%x for stream %d",
+                __FUNCTION__, mWidth, mHeight, mFormat, mId);
         mState = CONNECTED;
         return res;
     }
@@ -463,8 +452,8 @@ cleanUpBuffers:
         res = mConsumerInterface->cancelBuffer(mConsumerInterface.get(),
                 anwBuffers[i], -1);
     }
-    delete[] anwBuffers;
-    delete[] buffers;
+    delete anwBuffers;
+    delete buffers;
 
     return res;
 }
@@ -583,27 +572,10 @@ status_t FrameWaiter::waitForFrame(nsecs_t timeout) {
     return OK;
 }
 
-void FrameWaiter::onFrameAvailable(const BufferItem& /* item */) {
+void FrameWaiter::onFrameAvailable() {
     Mutex::Autolock lock(mMutex);
     mPendingFrames++;
     mCondition.signal();
 }
 
-int HWModuleHelpers::closeModule(void *dso) {
-    int status;
-    if (!dso) {
-        return -EINVAL;
-    }
-
-    status = dlclose(dso);
-    if (status != 0) {
-        char const *err_str = dlerror();
-        ALOGE("%s dlclose failed, error: %s", __func__, err_str ?: "unknown");
-    }
-
-    return status;
-}
-
-} // namespace tests
-} // namespace camera2
 } // namespace android
