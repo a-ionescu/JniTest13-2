@@ -196,7 +196,7 @@ extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_spirent_pttb_jnitest13_MainActivity_stringFromJNI(JNIEnv *env, jobject /* this */) {
 
-    return env->NewStringUTF("Hello from C++");
+    return env->NewStringUTF("Read GPS interface");
 
 }
 extern "C"
