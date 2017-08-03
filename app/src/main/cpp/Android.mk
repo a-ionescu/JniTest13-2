@@ -1,17 +1,17 @@
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
-LOCAL_SRC_FILES:= \
-	native-lib.cpp
+LOCAL_SRC_FILES := native-lib.cpp
 
 #LOCAL_SHARED_LIBRARIES := \
 #	libcutils libhardware
 
 #LOCAL_LDLIBS := -Llibs \
-        -lcutils -lhardware
+#        -lcutils -lhardware
 
 #LOCAL_LDLIBS := -lcutils
 #LOCAL_LDLIBS += -lhardware
+
 LOCAL_SHARED_LIBRARIES := libcutils
 LOCAL_SHARED_LIBRARIES += libhardware
 
