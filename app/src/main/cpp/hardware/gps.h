@@ -24,7 +24,7 @@
 #include <sys/socket.h>
 #include <stdbool.h>
 
-#include "hardware.h"
+#include <hardware/hardware.h>
 
 __BEGIN_DECLS
 
